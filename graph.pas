@@ -7,6 +7,7 @@ uses
   Dialogs, ExtCtrls;
 
 type
+  TGraphPoints = array of TPoint;
   TGraphForm = class(TForm)
     pbGraph: TPaintBox;
     procedure pbGraphPaint(Sender: TObject);
@@ -14,15 +15,19 @@ type
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
-    FPoints: array [0..144] of TPoint;
+    FPoints: TGraphPoints;
     procedure CalculateGraph;
     function GetPoint(Index: Integer): TPoint;
+    procedure SetPoint(Index: Integer; const Value: TPoint);
   public
-    property Points[Index: Integer]: TPoint read GetPoint;
+    procedure SetLength(value: integer);
+    property Points[Index: Integer]: TPoint read GetPoint write SetPoint;
+
   end;
 
 var
   GraphForm: TGraphForm;
+  FAbsPonts: array [0..144] of TPoint;
 
 implementation
 
@@ -41,11 +46,15 @@ begin
   yRangePixels := (pbGraph.Height - 2) div 2;
   origin       := Point(pbGraph.Width div 2, pbGraph.Height div 2);
   radian       := -2.0 * Pi;
-  interval     := 4.0 * Pi / 144.0;
-  for i := 0 to High(FPoints) do 
+  interval     := 4.0 * Pi / Length(FPoints);
+  for i := 0 to High(FPoints) do
   begin
     FPoints[i].X := origin.x + Round(radian * xRangePixels / Pi);
+    FAbsPonts[i].X := Round(radian * xRangePixels / Pi);
+
     FPoints[i].Y := origin.y - Round(sin(radian) * yRangePixels);
+    FAbsPonts[i].Y := Round(sin(radian) * yRangePixels);
+
     radian       := radian + interval;
   end;
 end;
@@ -132,6 +141,17 @@ begin
     Pen.Color := clBlue;
     Polyline(FPoints);
   end;
+end;
+
+procedure TGraphForm.SetLength(value: integer);
+begin
+  FreeAndNil(FPoints);
+  System.SetLength(FPoints, value);
+end;
+
+procedure TGraphForm.SetPoint(Index: Integer; const Value: TPoint);
+begin
+  FPoints[Index] := Value;
 end;
 
 end.
