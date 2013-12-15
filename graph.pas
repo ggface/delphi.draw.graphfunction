@@ -7,61 +7,91 @@ uses
   Dialogs, ExtCtrls;
 
 type
-  TGraphPoints = array of TPoint;
+  TMyItem = class
+    X: real;
+    Y: real;
+  public
+    constructor Create(X, Y: real);
+  end;
+
   TGraphForm = class(TForm)
     pbGraph: TPaintBox;
     procedure pbGraphPaint(Sender: TObject);
     procedure FormResize(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
   private
-    FPoints: TGraphPoints;
+    FDrawPoints: array of TPoint;
+    FPoints, FSourceX: TList;
+    function f(X: real): real;
     procedure CalculateGraph;
-    function GetPoint(Index: Integer): TPoint;
-    procedure SetPoint(Index: Integer; const Value: TPoint);
+    procedure AddPoint(X, Y: real);
+    procedure AddPoints(beginX, endX: integer; step: real);
   public
-    procedure SetLength(value: integer);
-    property Points[Index: Integer]: TPoint read GetPoint write SetPoint;
-
+    property Source: TList read FSourceX write FSourceX;
   end;
 
 var
   GraphForm: TGraphForm;
-  FAbsPonts: array [0..144] of TPoint;
 
 implementation
 
 {$R *.dfm}
-
 { TGraphForm }
+
+procedure TGraphForm.AddPoint(X, Y: real);
+begin
+  FPoints.Add(Pointer(TMyItem.Create(X, Y)));
+end;
+
+procedure TGraphForm.AddPoints(beginX, endX: integer; step: real);
+var
+  Center: TPoint;
+  currentX, currentY: real;
+begin
+  Center.X := pbGraph.ClientWidth div 2;
+  Center.Y := pbGraph.ClientHeight div 2;
+  currentX := beginX;
+  repeat
+    currentY := f(currentX);
+    AddPoint(currentX * 100 + Center.X, currentY * 100 - Center.Y);
+    if endX < beginX then
+      currentX := currentX - step
+    else if endX > beginX then
+      currentX := currentX + step;
+  until (Trunc(currentX) = endX);
+end;
 
 procedure TGraphForm.CalculateGraph;
 var
-  xRangePixels, yRangePixels: Integer;
-  origin: TPoint;
-  radian, interval: Double;
-  i: Integer;
+  i: integer;
 begin
-  xRangePixels := (pbGraph.Width - 2) div 4;
-  yRangePixels := (pbGraph.Height - 2) div 2;
-  origin       := Point(pbGraph.Width div 2, pbGraph.Height div 2);
-  radian       := -2.0 * Pi;
-  interval     := 4.0 * Pi / Length(FPoints);
-  for i := 0 to High(FPoints) do
-  begin
-    FPoints[i].X := origin.x + Round(radian * xRangePixels / Pi);
-    FAbsPonts[i].X := Round(radian * xRangePixels / Pi);
+  FPoints.Clear;
+  for i := 0 to Source.Count - 2 do
+    AddPoints(integer(Source[i]), integer(Source[i + 1]), 0.1);
 
-    FPoints[i].Y := origin.y - Round(sin(radian) * yRangePixels);
-    FAbsPonts[i].Y := Round(sin(radian) * yRangePixels);
+  SetLength(FDrawPoints, FPoints.Count);
+  for i := 0 to FPoints.Count - 1 do
+    FDrawPoints[i] := Point(Trunc(TMyItem(FPoints[i]).X),
+      Trunc(TMyItem(FPoints[i]).Y));
+end;
 
-    radian       := radian + interval;
-  end;
+function TGraphForm.f(X: real): real;
+begin
+  Result := 2 * sqr(X);
 end;
 
 procedure TGraphForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  ModalResult := mrYes;
+  FSourceX.Clear;
+  FPoints.Clear;
+end;
+
+procedure TGraphForm.FormCreate(Sender: TObject);
+begin
+  FSourceX := TList.Create;
+  FPoints := TList.Create;
 end;
 
 procedure TGraphForm.FormResize(Sender: TObject);
@@ -74,15 +104,9 @@ begin
   CalculateGraph;
 end;
 
-function TGraphForm.GetPoint(Index: Integer): TPoint;
-begin
-   result := FPoints[Index];
-end;
-
 procedure TGraphForm.pbGraphPaint(Sender: TObject);
 var
   origin: TPoint;
-  xRangePixels, yRangePixels: Integer;
 begin
   with pbGraph.Canvas do
   begin
@@ -92,66 +116,28 @@ begin
     Fillrect(pbGraph.BoundsRect);
 
     { Ось координат }
-    origin    := Point(pbGraph.Width div 2, pbGraph.Height div 2);
+    origin := Point(pbGraph.Width div 2, pbGraph.Height div 2);
     Pen.Color := clBlack;
     Pen.Style := psSolid;
     Pen.Width := 1;
     MoveTo(1, origin.Y);
-    LineTo(pbGraph.Width - 1, origin.y);
-    MoveTo(origin.x, 1);
-    LineTo(origin.x, pbGraph.Height - 1);
-
-    { Нарисуем деления и подписи }
-    Font.Name    := 'Symbol';
-    Font.Size    := 8;
-    Font.Color   := clBlack;
-    xRangePixels := (pbGraph.Width - 2) div 4; { пихсели в Pi }
-    yRangePixels := (pbGraph.Height - 2) div 2; { пихсели в 1 }
-
-    { Ось Х }
-    MoveTo(origin.x - 2 * xRangePixels, origin.y - 4);
-    LineTo(origin.x - 2 * xRangePixels, origin.y + 4);
-    TextOut(origin.x - 2 * xRangePixels + 2, origin.y + 2, '-2p');
-    MoveTo(origin.x - xRangePixels, origin.y - 4);
-    LineTo(origin.x - xRangePixels, origin.y + 4);
-    TextOut(origin.x - xRangePixels + 2, origin.y + 2, '-p');
-    MoveTo(origin.x + xRangePixels, origin.y - 4);
-    LineTo(origin.x + xRangePixels, origin.y + 4);
-    TextOut(origin.x + xRangePixels - 2 - TextWidth('p'), origin.y + 2, 'p');
-    MoveTo(origin.x + 2 * xRangePixels, origin.y - 4);
-    LineTo(origin.x + 2 * xRangePixels, origin.y + 4);
-    TextOut(origin.x + 2 * xRangePixels - 2 - TextWidth('2p'), origin.y + 2, '2p');
-
-
-    { Ось Y }
-    MoveTo(origin.x - 4, origin.y - yRangePixels);
-    LineTo(origin.x + 4, origin.y - yRangePixels);
-    TextOut(origin.x + 4, origin.y - yRangePixels, '1.0');
-    MoveTo(origin.x - 4, origin.y - yRangePixels div 2);
-    LineTo(origin.x + 4, origin.y - yRangePixels div 2);
-    TextOut(origin.x + 4, origin.y - (yRangePixels + TextHeight('1')) div 2, '0.5');
-    MoveTo(origin.x - 2, origin.y + yRangePixels div 2);
-    LineTo(origin.x + 2, origin.y + yRangePixels div 2);
-    TextOut(origin.x + 3, origin.y + (yRangePixels - TextHeight('1')) div 2, '-0.5');
-    MoveTo(origin.x - 2, origin.y + yRangePixels);
-    LineTo(origin.x + 2, origin.y + yRangePixels);
-    TextOut(origin.x + 3, origin.y + yRangePixels - TextHeight('1'), '-1.0');
+    LineTo(pbGraph.Width - 1, origin.Y);
+    MoveTo(origin.X, 1);
+    LineTo(origin.X, pbGraph.Height - 1);
 
     { Рисуем график }
     Pen.Color := clBlue;
-    Polyline(FPoints);
+    Pen.Width := 2;
+    Polyline(FDrawPoints);
   end;
 end;
 
-procedure TGraphForm.SetLength(value: integer);
-begin
-  FreeAndNil(FPoints);
-  System.SetLength(FPoints, value);
-end;
+{ TMyItem }
 
-procedure TGraphForm.SetPoint(Index: Integer; const Value: TPoint);
+constructor TMyItem.Create(X, Y: real);
 begin
-  FPoints[Index] := Value;
+  self.X := X;
+  self.Y := Y;
 end;
 
 end.

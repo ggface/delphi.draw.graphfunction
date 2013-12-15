@@ -14,6 +14,7 @@ object GraphForm: TGraphForm
   Position = poScreenCenter
   Scaled = False
   OnClose = FormClose
+  OnCreate = FormCreate
   OnResize = FormResize
   OnShow = FormShow
   PixelsPerInch = 96
