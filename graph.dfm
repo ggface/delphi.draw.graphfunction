@@ -13,10 +13,6 @@ object GraphForm: TGraphForm
   OldCreateOrder = False
   Position = poScreenCenter
   Scaled = False
-  OnClose = FormClose
-  OnCreate = FormCreate
-  OnResize = FormResize
-  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object pbGraph: TPaintBox
