@@ -71,8 +71,8 @@ begin
     // Рисуем график
     Pen.Color := clBlue;
     Pen.Width := 2;
-    a := -1;
-    b := 1;
+    a := DotsX[0];
+    b := DotsX[Length(DotsX) - 1];
 
     sx := (ClipRect.Right) / (b - a);
     h := 1 / sx;
